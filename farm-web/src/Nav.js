@@ -109,7 +109,7 @@ const Nav = ({ handleSearchChange }) => {
               <Link to="/farmer_signup" className="ff-action-link">
                 {t('becomeSeller')}
               </Link>
-              <Link to="/delivery-partner" className="ff-action-link" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
+              <Link to="/rider_signup" className="ff-action-link" style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
                 Join as Rider
               </Link>
             </>

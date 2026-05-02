@@ -1,21 +1,45 @@
 import mysql from 'mysql2/promise';
-import 'dotenv/config';
 
 async function test() {
     try {
-        console.log('Testing connection to:', process.env.MYSQLHOST);
         const connection = await mysql.createConnection({
-            host: process.env.MYSQLHOST,
-            user: process.env.MYSQLUSER,
-            password: process.env.MYSQLPASSWORD,
-            database: process.env.MYSQL_DATABASE,
-            port: process.env.MYSQLPORT
+            host: 'freshfarm-db.cr080qyq2nar.ap-south-2.rds.amazonaws.com',
+            user: 'admin',
+            password: 'Freshfarm6300783770',
+            database: 'freshfarm-db'
         });
-        console.log('Successfully connected!');
+        
+        try {
+            await connection.query('SELECT * FROM admins WHERE email = "test@test.com"');
+            console.log('admins query success');
+        } catch (e) {
+            console.error('admins table error:', e.message);
+        }
+
+        try {
+            await connection.query('SELECT * FROM farmer WHERE email = "test@test.com"');
+            console.log('farmer query success');
+        } catch (e) {
+            console.error('farmer table error:', e.message);
+        }
+
+        try {
+            await connection.query('SELECT * FROM login WHERE email = "test@test.com"');
+            console.log('login query success');
+        } catch (e) {
+            console.error('login table error:', e.message);
+        }
+        
+        try {
+            await connection.query('SELECT * FROM delivery_partner_applications WHERE email = "test@test.com"');
+            console.log('delivery query success');
+        } catch (e) {
+            console.error('delivery table error:', e.message);
+        }
+
         await connection.end();
-    } catch (err) {
-        console.error('Connection failed:', err);
+    } catch(e) {
+        console.error('Connection error:', e.message);
     }
 }
-
 test();
