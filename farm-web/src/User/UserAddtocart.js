@@ -479,7 +479,7 @@ function Cart({ userId }) {
               )}
 
               {/* Contact Details Section */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              <div className="checkout-contact-grid">
                 <div className="checkout-field">
                   <label htmlFor="buyerName" style={{ fontWeight: 700, color: '#334155' }}>{t('name')}</label>
                   <input 
@@ -520,7 +520,7 @@ function Cart({ userId }) {
               </div>
 
               {/* Location and Payment Section */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px', alignItems: 'start' }}>
+              <div className="checkout-main-grid">
                 {/* Left Side: Map and Address */}
                 <div style={{ display: 'grid', gap: '20px' }}>
                   <div className="checkout-field full">
@@ -616,7 +616,7 @@ function Cart({ userId }) {
                   </div>
                 </div>
 
-                <div className="checkout-field full" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="checkout-field full" style={{ display: 'flex', justifyContent: 'flex-end', gridColumn: '1 / -1' }}>
                   <button 
                     type="submit" 
                     className="btn-primary" 
