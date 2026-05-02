@@ -9,7 +9,7 @@ import FarmerSidebar from '../../Components/Sidebar/FarmerSidebar';
 import { useLanguage } from '../../context/LanguageContext';
 import { getLocalizedProductName } from '../../utils/localizedProduct';
 
-const API_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com'; // Define your API base URL
+const API_BASE_URL = 'https://d2pskbh3g9o3pk.cloudfront.net'; // Define your API base URL
 
 const ProductTable = () => {
   const [products, setProducts] = useState([]);

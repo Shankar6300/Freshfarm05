@@ -23,7 +23,7 @@ const FarmerOrder = () => {
   const chatEndRef = React.useRef(null);
   const [showTracker, setShowTracker] = useState(false);
   const [trackingData, setTrackingData] = useState(null);
-  const API_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com';
+  const API_BASE_URL = 'https://d2pskbh3g9o3pk.cloudfront.net';
 
   useEffect(() => {
     fetchOrders(); // Fetch orders when the component mounts
@@ -31,7 +31,7 @@ const FarmerOrder = () => {
 
   const fetchOrders = () => {
     // Make an API call to fetch orders
-    fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/farmer/orders') // Replace the URL with your actual backend endpoint
+    fetch('https://d2pskbh3g9o3pk.cloudfront.net/api11/farmer/orders') // Replace the URL with your actual backend endpoint
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to fetch orders');
@@ -84,7 +84,7 @@ const FarmerOrder = () => {
     }));
 
     // Send a POST request to update the order status in the backend
-    fetch(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/farmer/orders/${orderId}/status`, {
+    fetch(`https://d2pskbh3g9o3pk.cloudfront.net/api11/farmer/orders/${orderId}/status`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

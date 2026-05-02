@@ -19,7 +19,7 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { jwtDecode } from 'jwt-decode';
 
-const API_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com';
+const API_BASE_URL = 'https://d2pskbh3g9o3pk.cloudfront.net';
 
 const ACTIVE_ASSIGNMENT_STATUSES = new Set(['accepted', 'picked_up', 'out_for_delivery']);
 

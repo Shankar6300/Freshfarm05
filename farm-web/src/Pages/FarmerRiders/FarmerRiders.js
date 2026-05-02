@@ -15,7 +15,7 @@ L.Icon.Default.mergeOptions({
 const FarmerRiders = () => {
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const API_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com';
+  const API_BASE_URL = 'https://d2pskbh3g9o3pk.cloudfront.net';
 
   const fetchOnlineRiders = async () => {
     try {

@@ -58,7 +58,7 @@ const EditProductDialog = ({ product, onSave, onClose }) => {
           formData.append('image', editedProduct.image);
         }
 
-        const response = await axios.put(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/products/${editedProduct.id}`, formData, {
+        const response = await axios.put(`https://d2pskbh3g9o3pk.cloudfront.net/api/products/${editedProduct.id}`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }

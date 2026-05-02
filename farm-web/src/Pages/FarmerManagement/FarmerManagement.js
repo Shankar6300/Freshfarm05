@@ -18,7 +18,7 @@ const FarmerManagement = () => {
   useEffect(() => {
     const fetchFarmers = async () => {
       try {
-        const response = await axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/farmers');
+        const response = await axios.get('https://d2pskbh3g9o3pk.cloudfront.net/farmers');
         setFarmers(response.data);
       } catch (error) {
         console.error('Error fetching farmers:', error);
@@ -55,7 +55,7 @@ const FarmerManagement = () => {
     }
 
     try {
-      await axios.put(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/farmers/${editedFarmer.id}`, editedFarmer);
+      await axios.put(`https://d2pskbh3g9o3pk.cloudfront.net/farmers/${editedFarmer.id}`, editedFarmer);
       setFarmers(farmers.map(farmer => (farmer.id === editedFarmer.id ? editedFarmer : farmer)));
       setEditedFarmer(null);
       setEditPopupVisible(false);
@@ -78,7 +78,7 @@ const FarmerManagement = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/farmers/${deleteFarmerId}`);
+      await axios.delete(`https://d2pskbh3g9o3pk.cloudfront.net/farmers/${deleteFarmerId}`);
       setFarmers(farmers.filter(farmer => farmer.id !== deleteFarmerId));
       setDeleteMessage('');
       setDeleteFarmerId(null);

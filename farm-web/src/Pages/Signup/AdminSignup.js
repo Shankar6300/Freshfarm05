@@ -32,7 +32,7 @@ const SignupForm2 = () => {
 
     try {
       // Server request for form submission
-      const response = await fetch(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/adminsignup/${adminId}`, { // Pass adminId in the URL
+      const response = await fetch(`https://d2pskbh3g9o3pk.cloudfront.net/adminsignup/${adminId}`, { // Pass adminId in the URL
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -40,7 +40,7 @@ const RegistrationForm = () => {
   
     try {
       // Send OTP
-      const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/send-otp-signup', {
+      const response = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/send-otp-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, email, phoneNumber, password, type: 'user' }),
@@ -66,7 +66,7 @@ const RegistrationForm = () => {
       return;
     }
     try {
-      const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/verify-otp-signup', {
+      const response = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/verify-otp-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: otpCode }),
@@ -102,7 +102,7 @@ const RegistrationForm = () => {
       const userInfo = await userInfoResponse.json();
 
       // Send to our backend for authentication/registration
-      const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/auth/google', {
+      const response = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

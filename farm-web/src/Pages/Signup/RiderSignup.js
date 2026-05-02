@@ -29,7 +29,7 @@ const RiderSignup = () => {
         }
         setLoading(true);
         try {
-            const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/send-otp-signup', {
+            const response = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/send-otp-signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...formData, type: 'rider' })
@@ -52,7 +52,7 @@ const RiderSignup = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/verify-otp-signup', {
+            const response = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/verify-otp-signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: formData.email, otp, ...formData, type: 'rider' })
@@ -80,7 +80,7 @@ const RiderSignup = () => {
                 });
                 const userInfo = await userInfoResponse.json();
 
-                const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/auth/google', {
+                const response = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/auth/google', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

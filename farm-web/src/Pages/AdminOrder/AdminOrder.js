@@ -13,7 +13,7 @@ const AdminOrder = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/farmer/orders');
+      const response = await axios.get('https://d2pskbh3g9o3pk.cloudfront.net/api11/farmer/orders');
       setOrders(response.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
