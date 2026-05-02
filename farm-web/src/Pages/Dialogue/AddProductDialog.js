@@ -63,7 +63,7 @@ const AddProductDialog = ({ onSave, onClose }) => {
       formData.append('image', newProduct.image);
 
       // Pass the farmerId as a query parameter in the URL
-      await axios.post(`http://localhost:8081/api/products1?farmerId=${farmerId}`, formData, {
+      await axios.post(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/products1?farmerId=${farmerId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

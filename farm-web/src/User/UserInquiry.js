@@ -43,7 +43,7 @@ const UserInquiry = ({ productName }) => {
     const formErrors = validateForm();
     if (Object.keys(formErrors).length === 0) {
       try {
-        await axios.post('http://localhost:8081/submit-inquiry', form); // Send form data to backend
+        await axios.post('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/submit-inquiry', form); // Send form data to backend
         setIsMessageSent(true);
       } catch (error) {
         console.error('Error submitting form:', error);

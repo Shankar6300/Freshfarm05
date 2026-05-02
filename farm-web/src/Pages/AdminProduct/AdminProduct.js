@@ -13,7 +13,7 @@ const AdminProduct = () => {
   const [searchInput, setSearchInput] = useState('');
   const [imageError, setImageError] = useState('');
   const [productToDelete, setProductToDelete] = useState(null);
-  const API_BASE_URL = 'http://localhost:8081'; // Define your API base URL
+  const API_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com'; // Define your API base URL
   const { language } = useLanguage();
 
   useEffect(() => {

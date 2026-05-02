@@ -23,7 +23,7 @@ const ProductDetailPage = () => {
   const { productId } = useParams();
 
   useEffect(() => {
-    axios.get(`http://localhost:8081/api1/products/${productId}`)
+    axios.get(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api1/products/${productId}`)
       .then(response => {
         setProduct(response.data);
         setCategory(response.data.category);
@@ -54,7 +54,7 @@ const ProductDetailPage = () => {
   const handleAddToCart = () => {
     const totalPrice = product.price * quantity;
 
-    axios.post('http://localhost:8081/api11/products/cart', {
+    axios.post('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/products/cart', {
       product_name: product.name,
       quantity,
       category: category,
@@ -86,7 +86,7 @@ const ProductDetailPage = () => {
   const localizedProductName = getLocalizedProductName(product, language);
   const imageSrc = product.image && (String(product.image).startsWith('http://') || String(product.image).startsWith('https://'))
     ? product.image
-    : `http://localhost:8081/${product.image}`;
+    : `http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/${product.image}`;
   const fallbackImage = 'https://placehold.co/900x700/E5E7EB/374151?text=FreshFarm+Product';
 
   return (

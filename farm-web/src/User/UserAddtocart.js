@@ -91,7 +91,7 @@ function Cart({ userId }) {
   };
 
   const fetchCartItems = useCallback(() => {
-    fetch('http://localhost:8081/api11/products/cart', {
+    fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/products/cart', {
       params: { user_id: userId }
     })
       .then(response => {
@@ -130,7 +130,7 @@ function Cart({ userId }) {
   }, []);
 
   const handleRemoveFromCart = (productId) => {
-    fetch(`http://localhost:8081/api11/products/cart/${productId}`, {
+    fetch(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/products/cart/${productId}`, {
       method: 'DELETE',
       params: { user_id: userId }
     })
@@ -154,7 +154,7 @@ function Cart({ userId }) {
     }
 
     // Make a PATCH request to update the quantity and price in the backend
-    fetch(`http://localhost:8081/api11/products/cart/${productId}`, {
+    fetch(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/products/cart/${productId}`, {
       method: 'PATCH',
       params: { user_id: userId },
       headers: {
@@ -198,7 +198,7 @@ function Cart({ userId }) {
       totalPrice: finalOrderDetails.totalPrice
     };
 
-    return fetch('http://localhost:8081/api11/products/cart/match', {
+    return fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/products/cart/match', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ function Cart({ userId }) {
       })
       .then(data => {
         if (data.message === 'Order placed successfully') {
-          fetch('http://localhost:8081/api11/products/cart/placeOrder', {
+          fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/products/cart/placeOrder', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -301,7 +301,7 @@ function Cart({ userId }) {
 
     try {
       setPaymentLoading(true);
-      const response = await fetch('http://localhost:8081/api11/payments/stripe/checkout-session', {
+      const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api11/payments/stripe/checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

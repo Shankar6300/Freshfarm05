@@ -3337,6 +3337,7 @@ app.post('/api/admin/delivery-partners/:email/status', verifyToken, async (req, 
   }
 });
 
-server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

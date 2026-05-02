@@ -16,7 +16,7 @@ const FarmerLanding = () => {
   });
 
   useEffect(() => {
-    axios.get('http://localhost:8081/api/totaldata')
+    axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/totaldata')
       .then(response => {
         console.log('Fetched total data:', response.data);
         setData({

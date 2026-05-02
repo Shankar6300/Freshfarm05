@@ -85,7 +85,7 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    axios.get('http://localhost:8081/api/admintotaldata')
+    axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/admintotaldata')
       .then(response => {
         console.log('Fetched admin total data:', response.data);
         setData({

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from '../../Components/Sidebar/sidebar';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8081';
+const API_BASE = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com';
 
 export default function AdminDeliveryPartners() {
   const [partners, setPartners] = useState([]);

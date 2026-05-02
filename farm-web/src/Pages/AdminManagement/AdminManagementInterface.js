@@ -18,7 +18,7 @@ const AdminManagementInterface = () => {
 
   const fetchAdminsData = async () => {
     try {
-      const response = await axios.get('http://localhost:8081/admins');
+      const response = await axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/admins');
       setAdmins(response.data);
     } catch (error) {
       console.error('Error fetching admins data:', error);
@@ -36,7 +36,7 @@ const AdminManagementInterface = () => {
 
   const handleSaveEdit = async () => {
     try {
-      await axios.put(`http://localhost:8081/admins/${editedAdmin.admin_id}`, editedAdmin);
+      await axios.put(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/admins/${editedAdmin.admin_id}`, editedAdmin);
       setEditedAdmin(null);
       fetchAdminsData(); // Refresh admin list after update
     } catch (error) {
@@ -55,7 +55,7 @@ const AdminManagementInterface = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:8081/admins/${deleteAdminId}`);
+      await axios.delete(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/admins/${deleteAdminId}`);
       setDeleteMessage('');
       setFadeContainer(false);
       setAdmins(admins.filter((admin) => admin.admin_id !== deleteAdminId)); // Remove admin from frontend

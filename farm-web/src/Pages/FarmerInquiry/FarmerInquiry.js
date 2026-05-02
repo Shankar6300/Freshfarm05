@@ -12,7 +12,7 @@ const FarmerInquiry = () => {
     // Fetch inquiries from backend
     async function fetchInquiries() {
       try {
-        const response = await axios.get('http://localhost:8081/get-inquiries'); // Replace the URL with your actual backend endpoint
+        const response = await axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/get-inquiries'); // Replace the URL with your actual backend endpoint
         setInquiries(response.data);
       } catch (error) {
         console.error('Error fetching inquiries:', error);

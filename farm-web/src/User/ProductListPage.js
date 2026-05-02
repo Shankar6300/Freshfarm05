@@ -34,7 +34,7 @@ const ProductListPage = ({ category, products: providedProducts = null, searchTe
       if (String(product.image).startsWith('http://') || String(product.image).startsWith('https://')) {
         return product.image;
       }
-      return `http://localhost:8081/${product.image}`;
+      return `http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/${product.image}`;
     }
     return '';
   };
@@ -47,7 +47,7 @@ const ProductListPage = ({ category, products: providedProducts = null, searchTe
     // Fetch products from the backend API when parent does not provide products
     const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:8081/api/products');
+        const response = await axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/products');
         setFetchedProducts(response.data);
       } catch (error) {
         console.error('Error fetching products:', error);

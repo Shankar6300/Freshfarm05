@@ -13,7 +13,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     // Fetch users from backend API when component mounts
-    axios.get('http://localhost:8081/api/users')
+    axios.get('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/users')
       .then(response => {
         setUsers(response.data);
       })
@@ -30,7 +30,7 @@ const UserManagement = () => {
   const handleDeleteConfirmation = (confirmed) => {
     if (confirmed) {
       // Delete user from backend API
-      axios.delete(`http://localhost:8081/api/deleteUser/${userToDelete}`)
+      axios.delete(`http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/deleteUser/${userToDelete}`)
         .then(response => {
           console.log('User deleted successfully:', response.data);
           // Update frontend state after successful deletion

@@ -37,7 +37,7 @@ const Login = ({ setAuthenticated }) => {
 
   const handleLogin = async () => {
     try {
-      const endpoint = loginType === 'partner' ? 'http://localhost:8081/api/delivery-partners/login' : 'http://localhost:8081/login';
+      const endpoint = loginType === 'partner' ? 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/api/delivery-partners/login' : 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/login';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -72,7 +72,7 @@ const Login = ({ setAuthenticated }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:8081/verify-otp-login', {
+      const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/verify-otp-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: otpCode })
@@ -93,7 +93,7 @@ const Login = ({ setAuthenticated }) => {
 
   const logLoginActivity = async (email) => {
     try {
-      await fetch('http://localhost:8081/loginactivity', {
+      await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/loginactivity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -125,7 +125,7 @@ const Login = ({ setAuthenticated }) => {
       const userInfo = await userInfoResponse.json();
 
       // Send to our backend for authentication/registration
-      const response = await fetch('http://localhost:8081/auth/google', {
+      const response = await fetch('http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

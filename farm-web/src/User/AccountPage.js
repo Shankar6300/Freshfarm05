@@ -21,8 +21,8 @@ import Nav from '../Nav';
 import { useLanguage } from '../context/LanguageContext';
 import '../styles/customer-ui.css';
 
-const API_BASE_URL = 'http://localhost:8081';
-const SOCKET_BASE_URL = 'http://localhost:8081';
+const API_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com';
+const SOCKET_BASE_URL = 'http://freshfarm-backend-env.eba-qnm4hc4g.ap-south-1.elasticbeanstalk.com';
 
 const ORDER_STEPS = ['pending', 'confirmed', 'packed', 'picked_up', 'out_for_delivery', 'delivered'];
 const LIVE_TRACKING_STATUSES = new Set(['picked_up', 'out_for_delivery']);
