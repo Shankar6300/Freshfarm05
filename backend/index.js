@@ -512,7 +512,10 @@ db.getConnection((err, connection) => {
 loadFarmerProductColumns();
 ensureAccountSchema();
 
-
+import fs from 'fs';
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
+}
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {

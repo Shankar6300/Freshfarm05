@@ -63,11 +63,7 @@ const AddProductDialog = ({ onSave, onClose }) => {
       formData.append('image', newProduct.image);
 
       // Pass the farmerId as a query parameter in the URL
-      await axios.post(`https://d2pskbh3g9o3pk.cloudfront.net/api/products1?farmerId=${farmerId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      await axios.post(`https://d2pskbh3g9o3pk.cloudfront.net/api/products1?farmerId=${farmerId}`, formData);
 
       // Clear form fields after saving
       setNewProduct({
