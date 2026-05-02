@@ -1,0 +1,12 @@
+.close-button {
+  border: none;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  background: #f1f5f9;
+}
