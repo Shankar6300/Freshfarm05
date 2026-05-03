@@ -2243,11 +2243,16 @@ app.get('/api/account/orders/:userId', (req, res) => {
     FROM orders o
     LEFT JOIN order_item oi ON oi.orderId = o.new_id
     LEFT JOIN delivery_live_locations l ON l.order_id = o.new_id
-    WHERE o.user_id = ?
+    WHERE o.user_id = ? OR o.customer_email = ?
     ORDER BY o.orderDate DESC, o.new_id DESC
   `;
 
-  db.query(query, [userId], (err, results) => {
+  // Determine if userId is an integer or email
+  const isNumeric = !isNaN(Number(userId));
+  const numericId = isNumeric ? Number(userId) : 0;
+  const emailParam = isNumeric ? null : userId;
+
+  db.query(query, [numericId, emailParam], (err, results) => {
     if (err) {
       console.error('Error fetching account orders:', err);
       return res.status(500).json({ error: 'Failed to fetch orders.' });
@@ -2286,6 +2291,21 @@ app.get('/api/account/orders/:userId', (req, res) => {
     }, {});
 
     return res.json(Object.values(grouped));
+  });
+});
+
+app.post('/api/account/orders/:orderId/cancel', (req, res) => {
+  const { orderId } = req.params;
+  const cancelQuery = 'UPDATE orders SET status = "cancelled" WHERE new_id = ? AND (status = "pending" OR status = "confirmed")';
+  db.query(cancelQuery, [orderId], (err, result) => {
+    if (err) {
+      console.error('Error cancelling order:', err);
+      return res.status(500).json({ error: 'Failed to cancel order.' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: 'Order cannot be cancelled at this stage or does not exist.' });
+    }
+    return res.json({ message: 'Order cancelled successfully.' });
   });
 });
 

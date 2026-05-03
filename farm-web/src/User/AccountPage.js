@@ -103,6 +103,28 @@ const AccountPage = () => {
   const [locationHistoryByOrder, setLocationHistoryByOrder] = useState({});
 
   const [savedNotice, setSavedNotice] = useState('');
+  const [chatMessages, setChatMessages] = useState({});
+  const [chatInput, setChatInput] = useState('');
+
+  const handleSendMessage = (orderId) => {
+    if (!chatInput.trim()) return;
+    
+    const newMessage = { text: chatInput, sender: 'user' };
+    setChatMessages((prev) => ({
+      ...prev,
+      [orderId]: [...(prev[orderId] || []), newMessage]
+    }));
+    
+    const botReply = { text: `We have received your message regarding order #${orderId}. An agent will look into it shortly!`, sender: 'bot' };
+    setChatInput('');
+    
+    setTimeout(() => {
+      setChatMessages((prev) => ({
+        ...prev,
+        [orderId]: [...(prev[orderId] || []), botReply]
+      }));
+    }, 600);
+  };
 
   const mergeOrderTrackingUpdate = (incomingUpdate) => {
     if (!incomingUpdate || incomingUpdate.orderId == null) return;
@@ -162,7 +184,15 @@ const AccountPage = () => {
         return;
       }
 
-      const decodedUserId = Number(decoded?.email || 0);
+      let decodedUserId = Number(decoded?.userId);
+      if (!decodedUserId && Number.isFinite(Number(decoded?.email))) {
+        decodedUserId = Number(decoded?.email);
+      } else if (!decodedUserId && typeof decoded?.email === 'string') {
+        // Fallback: we have an email but no integer ID yet in this component.
+        // We will call a new endpoint to get the profile by email.
+        decodedUserId = decoded.email;
+      }
+
       if (!decodedUserId) {
         setLoading(false);
         return;
@@ -251,10 +281,34 @@ const AccountPage = () => {
       { key: 'support', label: t('customerSupport'), icon: faHeadset },
       { key: 'referrals', label: t('manageReferrals'), icon: faHeart },
       { key: 'addresses', label: t('addresses'), icon: faLocationDot },
-      { key: 'profile', label: t('accountProfile'), icon: faUser }
+      { key: 'profile', label: t('accountProfile'), icon: faUser },
+      { key: 'logout', label: t('logout') || 'Logout', icon: faArrowLeft }
     ],
     [t]
   );
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/account/orders/${orderId}/cancel`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        fetchAccountData(userId);
+      } else {
+        alert('Could not cancel order. It may have already been processed.');
+      }
+    } catch (err) {
+      console.error('Cancel order failed', err);
+    }
+  };
+
+  const [openChatbotOrderId, setOpenChatbotOrderId] = useState(null);
 
   const handleFormChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -362,6 +416,15 @@ const AccountPage = () => {
 
   const renderOrderTracking = (status) => {
     const activeIndex = getOrderStepIndex(status);
+    const isCancelled = normalizeOrderStatus(status) === 'cancelled';
+
+    if (isCancelled) {
+      return (
+        <div style={{ margin: '10px 0 14px', padding: '10px 12px', borderRadius: '14px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 'bold', textAlign: 'center' }}>
+          🚫 Order Cancelled
+        </div>
+      );
+    }
 
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '8px', margin: '10px 0 14px', padding: '10px 12px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
@@ -444,6 +507,44 @@ const AccountPage = () => {
                 ))}
               </div>
               <div className="ff-order-total">{t('total')}: {t('currencySymbol')}{order.totalPrice}</div>
+              
+              <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {(normalizeOrderStatus(order.status) === 'pending' || normalizeOrderStatus(order.status) === 'confirmed') && (
+                  <button onClick={() => handleCancelOrder(order.orderId)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Cancel Order
+                  </button>
+                )}
+                <button onClick={() => setOpenChatbotOrderId(openChatbotOrderId === order.orderId ? null : order.orderId)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#0f766e', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Help with this Order
+                </button>
+              </div>
+
+              {openChatbotOrderId === order.orderId && (
+                <div style={{ marginTop: '16px', padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                  <h4 style={{ margin: '0 0 10px', color: '#0f172a' }}>Real-time Support</h4>
+                  <div style={{ height: '150px', overflowY: 'auto', background: 'white', borderRadius: '8px', padding: '10px', border: '1px solid #e2e8f0', marginBottom: '10px', fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ alignSelf: 'flex-start', background: '#f1f5f9', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%' }}>
+                      <p style={{ margin: 0, color: '#334155' }}>🤖 Hi! How can I help you with order #{order.orderId}?</p>
+                    </div>
+                    {(chatMessages[order.orderId] || []).map((msg, idx) => (
+                      <div key={idx} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', background: msg.sender === 'user' ? '#0f766e' : '#f1f5f9', color: msg.sender === 'user' ? 'white' : '#334155', padding: '8px 12px', borderRadius: '12px', maxWidth: '80%' }}>
+                        <p style={{ margin: 0 }}>{msg.sender === 'bot' ? '🤖 ' : ''}{msg.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Type your message..." 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(order.orderId)}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                    />
+                    <button onClick={() => handleSendMessage(order.orderId)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#0f766e', color: 'white', cursor: 'pointer' }}>Send</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -662,7 +763,13 @@ const AccountPage = () => {
                 key={tab.key}
                 type="button"
                 className={activeTab === tab.key ? 'active' : ''}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  if (tab.key === 'logout') {
+                    handleLogout();
+                  } else {
+                    setActiveTab(tab.key);
+                  }
+                }}
               >
                 <FontAwesomeIcon icon={tab.icon} />
                 <span>{tab.label}</span>
