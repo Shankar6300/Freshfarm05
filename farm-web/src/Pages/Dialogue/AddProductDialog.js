@@ -63,7 +63,8 @@ const AddProductDialog = ({ onSave, onClose }) => {
       formData.append('image', newProduct.image);
 
       // Pass the farmerId as a query parameter in the URL
-      await axios.post(`https://d2pskbh3g9o3pk.cloudfront.net/api/products1?farmerId=${farmerId}`, formData);
+      const API_BASE_URL = process.env.REACT_APP_BACKEND_URL?.replace(/\/$/, '') || 'https://d2pskbh3g9o3pk.cloudfront.net';
+      await axios.post(`${API_BASE_URL}/api/products1?farmerId=${farmerId}`, formData);
 
       // Clear form fields after saving
       setNewProduct({
@@ -81,6 +82,7 @@ const AddProductDialog = ({ onSave, onClose }) => {
       onClose();
     } catch (error) {
       console.error('Error saving product:', error);
+      alert(error.response?.data?.error || error.message || 'Error saving product. Please try again.');
     }
   };
 

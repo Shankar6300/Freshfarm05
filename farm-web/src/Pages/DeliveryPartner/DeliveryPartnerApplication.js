@@ -18,6 +18,18 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useLanguage } from '../../context/LanguageContext';
 import { jwtDecode } from 'jwt-decode';
+import io from 'socket.io-client';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet icon issues
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
 
 const API_BASE_URL = 'https://d2pskbh3g9o3pk.cloudfront.net';
 
@@ -144,6 +156,11 @@ const DeliveryPartnerApplication = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const chatEndRef = useRef(null);
+  
+  const [socket, setSocket] = useState(null);
+  const [incomingRequest, setIncomingRequest] = useState(null);
+  const [socketChatActive, setSocketChatActive] = useState(false);
+  const [activeSocketOrder, setActiveSocketOrder] = useState(null);
 
   const locationWatchRef = useRef(null);
   const activeAssignments = useMemo(
@@ -235,6 +252,67 @@ const DeliveryPartnerApplication = () => {
     }
   };
 
+  useEffect(() => {
+    if (!riderData?.email) return;
+    const newSocket = io(process.env.REACT_APP_BACKEND_URL?.replace(/\/$/, '') || 'https://d2pskbh3g9o3pk.cloudfront.net');
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      newSocket.emit('register', riderData.email);
+    });
+
+    newSocket.on('incoming_request', (data) => {
+      setIncomingRequest(data);
+    });
+
+    newSocket.on('receive_message', (data) => {
+      if (data.fromEmail === incomingRequest?.farmerEmail || !incomingRequest) {
+         setChatMessages(prev => [...prev, { text: data.text, sender: 'farmer' }]);
+      }
+    });
+
+    return () => newSocket.close();
+  }, [riderData?.email, incomingRequest?.farmerEmail]);
+
+  const handleAcceptSocketRequest = () => {
+    if (!socket || !incomingRequest) return;
+    socket.emit('accept_request', {
+      farmerEmail: incomingRequest.farmerEmail,
+      riderEmail: riderData.email,
+      riderName: riderData.full_name
+    });
+    setSocketChatActive(true);
+    setChatMessages([{ text: 'You accepted the request. Start chatting!', sender: 'system' }]);
+  };
+
+  const handleSendSocketMessage = () => {
+    if (!newMessage.trim() || !socket || !incomingRequest) return;
+    socket.emit('send_message', {
+      toEmail: incomingRequest.farmerEmail,
+      fromEmail: riderData.email,
+      text: newMessage,
+      timestamp: new Date()
+    });
+    setChatMessages(prev => [...prev, { text: newMessage, sender: 'rider' }]);
+    setNewMessage('');
+  };
+
+  const handleConfirmSocketOrder = () => {
+    if (!socket || !incomingRequest) return;
+    socket.emit('confirm_order', {
+      farmerEmail: incomingRequest.farmerEmail,
+      riderEmail: riderData.email,
+      riderName: riderData.full_name
+    });
+    setActiveSocketOrder({
+      farmerEmail: incomingRequest.farmerEmail,
+      farmerLat: incomingRequest.farmerLat,
+      farmerLng: incomingRequest.farmerLng
+    });
+    setSocketChatActive(false);
+    setIncomingRequest(null);
+  };
+
   const handleToggleOnline = async () => {
     const newStatus = !isOnline;
     setIsOnline(newStatus);
@@ -258,7 +336,18 @@ const DeliveryPartnerApplication = () => {
   };
 
   const pushLocationUpdate = (latitude, longitude) => {
-    if (!riderData?.email || activeAssignments.length === 0) return;
+    if (!riderData?.email) return;
+
+    if (socket && activeSocketOrder) {
+      socket.emit('update_location', {
+        toEmail: activeSocketOrder.farmerEmail,
+        riderEmail: riderData.email,
+        lat: latitude,
+        lng: longitude
+      });
+    }
+
+    if (activeAssignments.length === 0) return;
 
     activeAssignments.forEach((assignment) => {
       const etaMinutes = estimateEtaMinutes(assignment.total_quantity, assignment.assignment_status, riderData.vehicle_type);
@@ -294,11 +383,11 @@ const DeliveryPartnerApplication = () => {
   };
 
   useEffect(() => {
-    if (isOnline && riderData && !needsRegistration && activeAssignments.length > 0) {
+    if (isOnline && riderData && !needsRegistration && (activeAssignments.length > 0 || activeSocketOrder)) {
       startLocationTracking();
     }
     return () => stopLocationTracking();
-  }, [isOnline, riderData, needsRegistration, activeAssignments.length]);
+  }, [isOnline, riderData, needsRegistration, activeAssignments.length, activeSocketOrder]);
 
   const handleCompleteRegistration = async (e) => {
     e.preventDefault();
@@ -596,7 +685,61 @@ const DeliveryPartnerApplication = () => {
 
           <div style={dashboardLayoutStyle}>
              <section style={leftColumnStyle}>
-                <div style={panelStyle}>
+                 {incomingRequest && !socketChatActive && (
+                    <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', border: '2px solid #00AC7F', marginBottom: '20px' }}>
+                       <h4 style={{ margin: '0 0 10px', color: '#00AC7F' }}>Incoming Farmer Request</h4>
+                       <p style={{ margin: '0 0 15px', color: '#333' }}>
+                         A farmer ({incomingRequest.farmerEmail}) wants to request you for a pickup!
+                       </p>
+                       <div style={{ display: 'flex', gap: '10px' }}>
+                         <button onClick={handleAcceptSocketRequest} style={acceptButtonStyle}>Accept Request</button>
+                         <button onClick={() => setIncomingRequest(null)} style={{ ...statusButtonStyle, background: '#fff', color: '#B01818', borderColor: '#B01818' }}>Decline</button>
+                       </div>
+                    </div>
+                 )}
+
+                 {socketChatActive && (
+                    <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', border: '1px solid #00AC7F', marginBottom: '20px', display: 'flex', flexDirection: 'column', height: '400px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                         <h4 style={{ margin: 0, color: '#00AC7F' }}>Live Chat with Farmer</h4>
+                         <div>
+                            <button onClick={handleConfirmSocketOrder} style={{ ...acceptButtonStyle, marginRight: '10px' }}>Confirm Order</button>
+                            <button onClick={() => { setSocketChatActive(false); setIncomingRequest(null); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>×</button>
+                         </div>
+                       </div>
+                       <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#fafafa', padding: '10px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
+                         {chatMessages.map((msg, i) => (
+                           <div key={i} style={{ alignSelf: msg.sender === 'rider' ? 'flex-end' : (msg.sender === 'system' ? 'center' : 'flex-start'), backgroundColor: msg.sender === 'rider' ? '#00AC7F' : (msg.sender === 'system' ? '#eee' : '#fff'), color: msg.sender === 'rider' ? '#fff' : '#333', padding: '8px 12px', borderRadius: '15px', maxWidth: '80%', fontSize: '13px', border: msg.sender === 'farmer' ? '1px solid #ddd' : 'none' }}>
+                              {msg.text}
+                           </div>
+                         ))}
+                       </div>
+                       <div style={{ display: 'flex', gap: '10px' }}>
+                         <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendSocketMessage()} placeholder="Type message to negotiate..." style={{ flex: 1, padding: '10px', borderRadius: '20px', border: '1px solid #ddd', outline: 'none' }} />
+                         <button onClick={handleSendSocketMessage} style={{ padding: '10px 20px', backgroundColor: '#00AC7F', color: '#fff', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}>Send</button>
+                       </div>
+                    </div>
+                 )}
+
+                 {activeSocketOrder && (
+                    <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '15px', border: '2px solid #00AC7F', marginBottom: '20px' }}>
+                       <h4 style={{ margin: '0 0 10px', color: '#00AC7F' }}>Active Pickup</h4>
+                       <p>Proceed to Farmer ({activeSocketOrder.farmerEmail})</p>
+                       <div style={{ height: '300px', width: '100%', borderRadius: '10px', overflow: 'hidden' }}>
+                         <MapContainer center={[activeSocketOrder.farmerLat || 20.5937, activeSocketOrder.farmerLng || 78.9629]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                           {activeSocketOrder.farmerLat && (
+                             <Marker position={[activeSocketOrder.farmerLat, activeSocketOrder.farmerLng]}>
+                               <Popup>Farmer Location</Popup>
+                             </Marker>
+                           )}
+                         </MapContainer>
+                       </div>
+                       <button onClick={() => setActiveSocketOrder(null)} style={{ marginTop: '15px', ...statusButtonStyle }}>Finish Trip</button>
+                    </div>
+                 )}
+
+                 <div style={panelStyle}>
                   <div style={panelHeaderStyle}>
                     <div>
                       <h4 style={panelTitleStyle}>Current handoff workflow</h4>

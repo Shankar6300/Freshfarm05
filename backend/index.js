@@ -21,8 +21,62 @@ const io = new SocketIOServer(server, {
   }
 });
 
+const activeSockets = {}; // Mapping of email to socket ID
+
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
+
+  socket.on('register', (email) => {
+    if (email) {
+      activeSockets[email] = socket.id;
+      console.log(`Registered socket for ${email}`);
+    }
+  });
+
+  socket.on('request_rider', (data) => {
+    console.log('Rider requested:', data);
+    const riderSocket = activeSockets[data.riderEmail];
+    if (riderSocket) {
+      io.to(riderSocket).emit('incoming_request', data);
+    }
+  });
+
+  socket.on('accept_request', (data) => {
+    const farmerSocket = activeSockets[data.farmerEmail];
+    if (farmerSocket) {
+      io.to(farmerSocket).emit('request_accepted', data);
+    }
+  });
+
+  socket.on('send_message', (data) => {
+    const targetSocket = activeSockets[data.toEmail];
+    if (targetSocket) {
+      io.to(targetSocket).emit('receive_message', data);
+    }
+  });
+
+  socket.on('update_location', (data) => {
+    const targetSocket = activeSockets[data.toEmail];
+    if (targetSocket) {
+      io.to(targetSocket).emit('rider_location_update', data);
+    }
+  });
+
+  socket.on('confirm_order', (data) => {
+    const farmerSocket = activeSockets[data.farmerEmail];
+    if (farmerSocket) {
+      io.to(farmerSocket).emit('order_confirmed', data);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    for (const [email, id] of Object.entries(activeSockets)) {
+      if (id === socket.id) {
+        delete activeSockets[email];
+        break;
+      }
+    }
+  });
 });
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -483,6 +537,32 @@ const ensureAccountSchema = () => {
   });
   db.query('ALTER TABLE delivery_partner_applications ADD COLUMN aadhaar_number_encrypted TEXT NULL', (err) => {
     if (err && err.code !== 'ER_DUP_FIELDNAME') {
+    }
+  });
+
+  const createFarmerRiderRequestsTable = `
+    CREATE TABLE IF NOT EXISTS farmer_rider_requests (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      farmer_email VARCHAR(255) NOT NULL,
+      rider_email VARCHAR(255) NOT NULL,
+      status VARCHAR(50) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `;
+
+  db.query(createFarmerRiderRequestsTable, (err) => {
+    if (err) console.error('Could not ensure farmer_rider_requests table:', err.message);
+  });
+
+  db.query('ALTER TABLE delivery_partner_applications ADD COLUMN current_lat DECIMAL(10,6) NULL', (err) => {
+    if (err && err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('Could not ensure current_lat column:', err.message);
+    }
+  });
+  db.query('ALTER TABLE delivery_partner_applications ADD COLUMN current_lng DECIMAL(10,6) NULL', (err) => {
+    if (err && err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('Could not ensure current_lng column:', err.message);
     }
   });
 };

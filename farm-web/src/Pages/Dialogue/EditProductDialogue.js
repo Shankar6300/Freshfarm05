@@ -58,7 +58,8 @@ const EditProductDialog = ({ product, onSave, onClose }) => {
           formData.append('image', editedProduct.image);
         }
 
-        const response = await axios.put(`https://d2pskbh3g9o3pk.cloudfront.net/api/products/${editedProduct.id}`, formData, {
+        const API_BASE_URL = process.env.REACT_APP_BACKEND_URL?.replace(/\/$/, '') || 'https://d2pskbh3g9o3pk.cloudfront.net';
+        const response = await axios.put(`${API_BASE_URL}/api/products/${editedProduct.id}`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
