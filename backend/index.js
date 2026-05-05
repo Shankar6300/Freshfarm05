@@ -627,6 +627,11 @@ const upload = multer({
 });
 
 
+// Version check endpoint
+app.get('/api/version', (req, res) => {
+  res.json({ version: '2.0.1', deployedAt: '2026-05-05T22:45:00+05:30', status: 'ok' });
+});
+
 // Fetch all products
 app.get('/api/products/:farmerId', (req, res) => {
     const farmerEmail = req.params.farmerId; // Accessing farmerId from URL params
