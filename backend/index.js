@@ -780,8 +780,16 @@ app.post('/api/seed/normalize-product-images', async (req, res) => {
 
 // Backend code
 
-app.post('/api/products1', upload.single('image'), (req, res) => {
-    console.log(req.file);
+app.post('/api/products1', (req, res, next) => {
+  upload.single('image')(req, res, (multerErr) => {
+    if (multerErr) {
+      console.error('Multer upload error:', multerErr);
+      return res.status(400).json({ error: multerErr.message || 'File upload failed' });
+    }
+    console.log('Uploaded file:', req.file);
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
   const { name, name_hi, name_te, description, category, price, quantity } = req.body;
     const image = req.file.filename; // Multer saves uploaded file to 'uploads/' directory
     const farmerEmail= req.query.farmerId; // Extract farmer name from query parameters
@@ -833,6 +841,7 @@ app.post('/api/products1', upload.single('image'), (req, res) => {
         });
     });
    
+  });
 });
 
 app.put('/api/products/:productId', upload.single('image'), (req, res) => {
@@ -3437,6 +3446,18 @@ app.post('/api/admin/delivery-partners/:email/status', verifyToken, async (req, 
     console.error('Admin change status error:', err.message);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Global error handler for multer and other unhandled errors
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message || err);
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'File too large. Maximum size is 5MB.' });
+  }
+  if (err.name === 'MulterError') {
+    return res.status(400).json({ error: err.message });
+  }
+  res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 8080;
