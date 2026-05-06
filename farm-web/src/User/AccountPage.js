@@ -509,6 +509,12 @@ const AccountPage = () => {
               <div className="ff-order-total">{t('total')}: {t('currencySymbol')}{order.totalPrice}</div>
               
               <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <a 
+                  href={`/order/${order.orderId}`}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #0f766e', background: 'white', color: '#0f766e', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
+                >
+                  View Details & Track
+                </a>
                 {(normalizeOrderStatus(order.status) === 'pending' || normalizeOrderStatus(order.status) === 'confirmed') && (
                   <button onClick={() => handleCancelOrder(order.orderId)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}>
                     Cancel Order

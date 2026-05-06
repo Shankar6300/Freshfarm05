@@ -34,6 +34,7 @@ import AccountPage from './User/AccountPage';
 import RiderSignup from './Pages/Signup/RiderSignup';
 import DeliveryPartnerApplication from './Pages/DeliveryPartner/DeliveryPartnerApplication';
 import FarmerRiders from './Pages/FarmerRiders/FarmerRiders';
+import OrderDetailPage from './User/OrderDetailPage';
 
 
 export const MyContext = createContext();
@@ -117,6 +118,7 @@ function App() {
               <Route path="/cart" element={<CartModal/>} />
               <Route path="/inquiry" element={<UserInquiry/>} />
               <Route path="/account" element={<AccountPage/>} />
+              <Route path="/order/:orderId" element={<OrderDetailPage/>} />
               <Route path="/delivery-partner" element={<DeliveryPartnerApplication />} />
               <Route path="/rider_signup" element={<RiderSignup />} />
 

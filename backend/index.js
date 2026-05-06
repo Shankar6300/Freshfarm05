@@ -21,62 +21,8 @@ const io = new SocketIOServer(server, {
   }
 });
 
-const activeSockets = {}; // Mapping of email to socket ID
-
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
-
-  socket.on('register', (email) => {
-    if (email) {
-      activeSockets[email] = socket.id;
-      console.log(`Registered socket for ${email}`);
-    }
-  });
-
-  socket.on('request_rider', (data) => {
-    console.log('Rider requested:', data);
-    const riderSocket = activeSockets[data.riderEmail];
-    if (riderSocket) {
-      io.to(riderSocket).emit('incoming_request', data);
-    }
-  });
-
-  socket.on('accept_request', (data) => {
-    const farmerSocket = activeSockets[data.farmerEmail];
-    if (farmerSocket) {
-      io.to(farmerSocket).emit('request_accepted', data);
-    }
-  });
-
-  socket.on('send_message', (data) => {
-    const targetSocket = activeSockets[data.toEmail];
-    if (targetSocket) {
-      io.to(targetSocket).emit('receive_message', data);
-    }
-  });
-
-  socket.on('update_location', (data) => {
-    const targetSocket = activeSockets[data.toEmail];
-    if (targetSocket) {
-      io.to(targetSocket).emit('rider_location_update', data);
-    }
-  });
-
-  socket.on('confirm_order', (data) => {
-    const farmerSocket = activeSockets[data.farmerEmail];
-    if (farmerSocket) {
-      io.to(farmerSocket).emit('order_confirmed', data);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    for (const [email, id] of Object.entries(activeSockets)) {
-      if (id === socket.id) {
-        delete activeSockets[email];
-        break;
-      }
-    }
-  });
 });
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -96,7 +42,8 @@ const transporter = nodemailer.createTransport({
 
 // CORS configuration for frontend access
 app.use(cors({
-  origin: '*',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -538,32 +485,6 @@ const ensureAccountSchema = () => {
     if (err && err.code !== 'ER_DUP_FIELDNAME') {
     }
   });
-
-  const createFarmerRiderRequestsTable = `
-    CREATE TABLE IF NOT EXISTS farmer_rider_requests (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      farmer_email VARCHAR(255) NOT NULL,
-      rider_email VARCHAR(255) NOT NULL,
-      status VARCHAR(50) DEFAULT 'pending',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-  `;
-
-  db.query(createFarmerRiderRequestsTable, (err) => {
-    if (err) console.error('Could not ensure farmer_rider_requests table:', err.message);
-  });
-
-  db.query('ALTER TABLE delivery_partner_applications ADD COLUMN current_lat DECIMAL(10,6) NULL', (err) => {
-    if (err && err.code !== 'ER_DUP_FIELDNAME') {
-      console.error('Could not ensure current_lat column:', err.message);
-    }
-  });
-  db.query('ALTER TABLE delivery_partner_applications ADD COLUMN current_lng DECIMAL(10,6) NULL', (err) => {
-    if (err && err.code !== 'ER_DUP_FIELDNAME') {
-      console.error('Could not ensure current_lng column:', err.message);
-    }
-  });
 };
 
 
@@ -591,10 +512,7 @@ db.getConnection((err, connection) => {
 loadFarmerProductColumns();
 ensureAccountSchema();
 
-import fs from 'fs';
-if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
-}
+
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -626,11 +544,6 @@ const upload = multer({
     }
 });
 
-
-// Version check endpoint
-app.get('/api/version', (req, res) => {
-  res.json({ version: '2.0.1', deployedAt: '2026-05-05T22:45:00+05:30', status: 'ok' });
-});
 
 // Fetch all products
 app.get('/api/products/:farmerId', (req, res) => {
@@ -785,16 +698,8 @@ app.post('/api/seed/normalize-product-images', async (req, res) => {
 
 // Backend code
 
-app.post('/api/products1', (req, res, next) => {
-  upload.single('image')(req, res, (multerErr) => {
-    if (multerErr) {
-      console.error('Multer upload error:', multerErr);
-      return res.status(400).json({ error: multerErr.message || 'File upload failed' });
-    }
-    console.log('Uploaded file:', req.file);
-    if (!req.file) {
-      return res.status(400).json({ error: 'Image file is required' });
-    }
+app.post('/api/products1', upload.single('image'), (req, res) => {
+    console.log(req.file);
   const { name, name_hi, name_te, description, category, price, quantity } = req.body;
     const image = req.file.filename; // Multer saves uploaded file to 'uploads/' directory
     const farmerEmail= req.query.farmerId; // Extract farmer name from query parameters
@@ -846,7 +751,6 @@ app.post('/api/products1', (req, res, next) => {
         });
     });
    
-  });
 });
 
 app.put('/api/products/:productId', upload.single('image'), (req, res) => {
@@ -2223,6 +2127,39 @@ app.post('/api11/payments/stripe/checkout-session', async (req, res) => {
   }
 });
 
+  // Get order details for customer
+  app.get('/api/account/orders/:orderId', (req, res) => {
+    const orderId = req.params.orderId;
+    const sql = `
+      SELECT 
+        o.new_id AS orderId,
+        o.buyerName,
+        o.buyerPhoneNumber,
+        o.buyerLocation,
+        o.totalPrice,
+        o.status,
+        o.user_id,
+        o.customer_email,
+        o.created_at,
+        GROUP_CONCAT(DISTINCT oi.productName SEPARATOR ', ') AS products
+      FROM orders o
+      LEFT JOIN order_item oi ON o.new_id = oi.orderId
+      WHERE o.new_id = ?
+      GROUP BY o.new_id
+      LIMIT 1
+    `;
+    db.query(sql, [orderId], (err, results) => {
+      if (err) {
+        console.error('Error fetching order details:', err);
+        return res.status(500).json({ error: 'Failed to fetch order details.' });
+      }
+      if (results.length === 0) {
+        return res.status(404).json({ error: 'Order not found.' });
+      }
+      res.json(results[0]);
+    });
+  });
+
   app.get('/api11/farmer/orders', (req, res) => {
     const query = `
       SELECT 
@@ -2336,16 +2273,11 @@ app.get('/api/account/orders/:userId', (req, res) => {
     FROM orders o
     LEFT JOIN order_item oi ON oi.orderId = o.new_id
     LEFT JOIN delivery_live_locations l ON l.order_id = o.new_id
-    WHERE o.user_id = ? OR o.customer_email = ?
+    WHERE o.user_id = ?
     ORDER BY o.orderDate DESC, o.new_id DESC
   `;
 
-  // Determine if userId is an integer or email
-  const isNumeric = !isNaN(Number(userId));
-  const numericId = isNumeric ? Number(userId) : 0;
-  const emailParam = isNumeric ? null : userId;
-
-  db.query(query, [numericId, emailParam], (err, results) => {
+  db.query(query, [userId], (err, results) => {
     if (err) {
       console.error('Error fetching account orders:', err);
       return res.status(500).json({ error: 'Failed to fetch orders.' });
@@ -2384,21 +2316,6 @@ app.get('/api/account/orders/:userId', (req, res) => {
     }, {});
 
     return res.json(Object.values(grouped));
-  });
-});
-
-app.post('/api/account/orders/:orderId/cancel', (req, res) => {
-  const { orderId } = req.params;
-  const cancelQuery = 'UPDATE orders SET status = "cancelled" WHERE new_id = ? AND (status = "pending" OR status = "confirmed")';
-  db.query(cancelQuery, [orderId], (err, result) => {
-    if (err) {
-      console.error('Error cancelling order:', err);
-      return res.status(500).json({ error: 'Failed to cancel order.' });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ error: 'Order cannot be cancelled at this stage or does not exist.' });
-    }
-    return res.json({ message: 'Order cancelled successfully.' });
   });
 });
 
@@ -3278,6 +3195,18 @@ app.post('/api/chats', (req, res) => {
       console.error('Error saving chat:', err);
       return res.status(500).json({ error: 'Failed to send message.' });
     }
+    // Emit Socket.io event for real-time message delivery
+    const messageData = {
+      id: result.insertId,
+      order_id: orderId,
+      sender_role: senderRole,
+      message: message,
+      created_at: new Date().toISOString()
+    };
+
+    // Broadcast to all connected clients listening for this order's messages
+    io.emit(`chat:${orderId}`, messageData);
+
     res.json({ id: result.insertId, message: 'Message sent.' });
   });
 });
@@ -3453,19 +3382,6 @@ app.post('/api/admin/delivery-partners/:email/status', verifyToken, async (req, 
   }
 });
 
-// Global error handler for multer and other unhandled errors
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.message || err);
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ error: 'File too large. Maximum size is 5MB.' });
-  }
-  if (err.name === 'MulterError') {
-    return res.status(400).json({ error: err.message });
-  }
-  res.status(500).json({ error: err.message || 'Internal server error' });
-});
-
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
