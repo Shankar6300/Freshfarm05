@@ -39,7 +39,6 @@ function Cart({ userId }) {
   const [paymentNotice, setPaymentNotice] = useState('');
   const [lastOrderPayment, setLastOrderPayment] = useState(null);
   const [customerEmail, setCustomerEmail] = useState('');
-  const [resolvedUserId, setResolvedUserId] = useState(null);
   const { t, language } = useLanguage();
 
   const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); 
@@ -130,29 +129,26 @@ function Cart({ userId }) {
     }
   }, []);
 
-  useEffect(() => {
-    const resolveNumericUserId = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        const decoded = jwtDecode(token);
-        if (!decoded?.email) return;
-
-        const response = await fetch(`https://d2pskbh3g9o3pk.cloudfront.net/api/account/profileByEmail/${encodeURIComponent(decoded.email)}`);
-        if (!response.ok) return;
-
-        const profile = await response.json();
-        if (profile?.id != null) {
-          setResolvedUserId(Number(profile.id));
-        }
-      } catch (err) {
-        console.error('Unable to resolve numeric user id for checkout:', err);
+  const getCheckoutIdentity = useCallback(() => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return { customerEmail: '', userId: null };
       }
-    };
 
-    resolveNumericUserId();
-  }, []);
+      const decoded = jwtDecode(token);
+      const decodedUserId = Number(decoded?.userId || decoded?.id || userId || NaN);
+      return {
+        customerEmail: decoded?.email || customerEmail || '',
+        userId: Number.isFinite(decodedUserId) && decodedUserId > 0 ? decodedUserId : null
+      };
+    } catch (err) {
+      return {
+        customerEmail: customerEmail || '',
+        userId: Number.isFinite(Number(userId)) && Number(userId) > 0 ? Number(userId) : null
+      };
+    }
+  }, [customerEmail, userId]);
 
   const handleRemoveFromCart = (productId) => {
     fetch(`https://d2pskbh3g9o3pk.cloudfront.net/api11/products/cart/${productId}`, {
@@ -279,6 +275,7 @@ function Cart({ userId }) {
     const grandTotal = calculateTotalPrice();
     const codAdvanceAmount = Math.max(1, Math.round(grandTotal * 0.25));
     const codRemainingAmount = Math.max(0, grandTotal - codAdvanceAmount);
+    const checkoutIdentity = getCheckoutIdentity();
 
     return {
       buyerName,
@@ -288,10 +285,10 @@ function Cart({ userId }) {
       totalPrice: grandTotal,
       grandTotal,
       paymentMethod,
-      customerEmail: customerEmail || '',
+      customerEmail: checkoutIdentity.customerEmail,
       codAdvanceAmount,
       codRemainingAmount,
-      userId: resolvedUserId
+      userId: checkoutIdentity.userId
     };
   };
 
@@ -363,8 +360,8 @@ function Cart({ userId }) {
     if (payment === 'success') {
       const pendingRaw = localStorage.getItem('freshfarm_pending_order');
       if (!pendingRaw) {
-        setPaymentNotice('Payment successful.');
-        navigate('/addCart', { replace: true });
+        setPaymentNotice('Payment successful. If your order was created, it will appear in My Orders shortly.');
+        navigate('/account', { replace: true });
         return;
       }
 
@@ -372,11 +369,14 @@ function Cart({ userId }) {
         try {
           const pendingOrder = JSON.parse(pendingRaw);
           await placeOrderAfterValidation(pendingOrder);
+          setPaymentNotice('Payment successful. Your order has been placed.');
+          localStorage.setItem('freshfarm_order_success', JSON.stringify({
+            message: 'Your order has been placed successfully.'
+          }));
+          navigate('/account', { replace: true });
         } catch (err) {
           console.error('Error finalizing Stripe payment:', err);
           setError(err.message || 'Error placing order after payment. Please contact support.');
-        } finally {
-          navigate('/account', { replace: true });
         }
       };
 

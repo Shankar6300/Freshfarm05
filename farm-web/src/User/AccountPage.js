@@ -222,6 +222,20 @@ const AccountPage = () => {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      const flash = localStorage.getItem('freshfarm_order_success');
+      if (!flash) return;
+
+      const parsed = JSON.parse(flash);
+      setSavedNotice(parsed?.message || 'Your order has been placed successfully.');
+      setActiveTab('orders');
+      localStorage.removeItem('freshfarm_order_success');
+    } catch (err) {
+      localStorage.removeItem('freshfarm_order_success');
+    }
+  }, []);
+
   const fetchAccountData = async (currentUserId) => {
     try {
       const [profileRes, walletRes, ordersRes, addressesRes, supportRes, referralRes] = await Promise.all([
