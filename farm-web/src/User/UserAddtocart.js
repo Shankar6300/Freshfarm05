@@ -264,6 +264,7 @@ function Cart({ userId }) {
     });
     setOrderPlaced(true);
     localStorage.removeItem('freshfarm_pending_order');
+    return placeOrderData;
   }, []);
 
   const buildFinalOrderDetails = () => {
@@ -368,15 +369,17 @@ function Cart({ userId }) {
       const finalizePayment = async () => {
         try {
           const pendingOrder = JSON.parse(pendingRaw);
-          await placeOrderAfterValidation(pendingOrder);
+          const result = await placeOrderAfterValidation(pendingOrder);
           setPaymentNotice('Payment successful. Your order has been placed.');
-          localStorage.setItem('freshfarm_order_success', JSON.stringify({
-            message: 'Your order has been placed successfully.'
-          }));
-          navigate('/account', { replace: true });
+          localStorage.removeItem('freshfarm_pending_order');
+          // Navigate to confirmation page with order ID
+          setTimeout(() => {
+            navigate(`/order-confirmation/${result?.orderId || 'loading'}`, { replace: true });
+          }, 500);
         } catch (err) {
           console.error('Error finalizing Stripe payment:', err);
           setError(err.message || 'Error placing order after payment. Please contact support.');
+          navigate('/account', { replace: true });
         }
       };
 

@@ -2100,7 +2100,7 @@ app.get('/api/messages/:user', (req, res) => {
                   console.error('Error sending order notifications:', notifyErr);
                 });
 
-                res.status(200).json({ message: 'Order placed successfully!' });
+                res.status(200).json({ message: 'Order placed successfully!', orderId });
               });
             })
             .catch(err => {
