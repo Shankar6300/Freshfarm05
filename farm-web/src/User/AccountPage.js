@@ -102,6 +102,8 @@ const AccountPage = () => {
   const [addAmount, setAddAmount] = useState('');
   const [locationHistoryByOrder, setLocationHistoryByOrder] = useState({});
 
+  const [socketRef, setSocketRef] = useState(null);
+
   const [savedNotice, setSavedNotice] = useState('');
   const [chatMessages, setChatMessages] = useState({});
   const [chatInput, setChatInput] = useState('');
@@ -184,21 +186,37 @@ const AccountPage = () => {
         return;
       }
 
-      let decodedUserId = Number(decoded?.userId);
-      if (!decodedUserId && Number.isFinite(Number(decoded?.email))) {
-        decodedUserId = Number(decoded?.email);
-      } else if (!decodedUserId && typeof decoded?.email === 'string') {
-        // Fallback: we have an email but no integer ID yet in this component.
-        // We will call a new endpoint to get the profile by email.
-        decodedUserId = decoded.email;
-      }
+      // Prefer explicit numeric userId or id in token
+      let decodedUserId = null;
+      if (decoded?.userId) decodedUserId = Number(decoded.userId);
+      else if (decoded?.id) decodedUserId = Number(decoded.id);
 
-      if (!decodedUserId) {
-        setLoading(false);
+      if (Number.isFinite(decodedUserId) && decodedUserId > 0) {
+        setUserId(decodedUserId);
         return;
       }
 
-      setUserId(decodedUserId);
+      // If token only contains email, resolve user id from backend
+      if (decoded?.email && typeof decoded.email === 'string') {
+        (async () => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/account/profileByEmail/${encodeURIComponent(decoded.email)}`);
+            if (res.ok) {
+              const profile = await res.json();
+              if (profile && profile.id) {
+                setUserId(Number(profile.id));
+                return;
+              }
+            }
+          } catch (e) {
+            console.error('Error resolving profile by email:', e);
+          }
+          setLoading(false);
+        })();
+        return;
+      }
+
+      setLoading(false);
     } catch (err) {
       setLoading(false);
     }
@@ -262,18 +280,36 @@ const AccountPage = () => {
   useEffect(() => {
     if (!userId) return undefined;
 
+    const token = localStorage.getItem('token');
     const socket = io(SOCKET_BASE_URL, {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      auth: { token }
     });
 
     socket.on('order:tracking', (update) => {
       mergeOrderTrackingUpdate(update);
     });
 
+    setSocketRef(socket);
+
     return () => {
       socket.disconnect();
     };
   }, [userId]);
+
+  // Join rooms for all orders so this client receives only relevant chat/tracking events
+  useEffect(() => {
+    if (!orders || !orders.length || !socketRef) return;
+    try {
+      orders.forEach((order) => {
+        if (order && order.orderId) {
+          socketRef.emit('joinOrder', { orderId: order.orderId });
+        }
+      });
+    } catch (err) {
+      console.error('Error joining order rooms:', err);
+    }
+  }, [orders, socketRef]);
 
   const tabs = useMemo(
     () => [

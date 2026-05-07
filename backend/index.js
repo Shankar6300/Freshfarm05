@@ -23,6 +23,89 @@ const io = new SocketIOServer(server, {
 
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
+
+  // Attempt to verify JWT sent in handshake auth
+  const token = socket.handshake?.auth?.token;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+      socket.user = decoded;
+      console.log(`Socket ${socket.id} authenticated as`, decoded.email || decoded.userId || decoded.id || decoded);
+    } catch (err) {
+      console.warn(`Socket ${socket.id} provided invalid token`);
+    }
+  }
+
+  // Join order room request - server will validate whether the connecting user is relevant to the order
+  socket.on('joinOrder', async ({ orderId }) => {
+    const normalized = Number(orderId || 0);
+    if (!normalized) return;
+
+    try {
+      const rows = await runQuery('SELECT new_id AS orderId, user_id, farmer_id FROM orders WHERE new_id = ? LIMIT 1', [normalized]);
+      const order = rows?.[0];
+      if (!order) return;
+
+      // If socket is authenticated, allow join if they are the buyer or a farmer (or admin)
+      const user = socket.user || {};
+      const allowed = (user.userId && Number(user.userId) === Number(order.user_id)) ||
+                      (user.id && Number(user.id) === Number(order.user_id)) ||
+                      (user.userId && Number(user.userId) === Number(order.farmer_id)) ||
+                      (user.farmerId && Number(user.farmerId) === Number(order.farmer_id)) ||
+                      user.isAdmin || user.isFarmer;
+
+      // If unauthenticated, do not allow joining private rooms
+      if (!allowed) {
+        // still allow farmer sockets if they claim farmer and match farmer_id
+        if (!user || (!user.isFarmer && !user.isAdmin && !user.userId)) return;
+      }
+
+      const room = `order_${normalized}`;
+      socket.join(room);
+      console.log(`Socket ${socket.id} joined room ${room}`);
+    } catch (err) {
+      console.error('Error while joinOrder:', err.message);
+    }
+  });
+
+  socket.on('leaveOrder', ({ orderId }) => {
+    const normalized = Number(orderId || 0);
+    if (!normalized) return;
+    socket.leave(`order_${normalized}`);
+  });
+
+  // Handle chat messages via socket: persist and emit to room
+  socket.on('chat_message', async (payload) => {
+    try {
+      const { orderId, message, senderRole } = payload || {};
+      const normalized = Number(orderId || 0);
+      if (!normalized || !message || !senderRole) return;
+
+      const insertSql = 'INSERT INTO order_chats (order_id, sender_role, message) VALUES (?, ?, ?)';
+      const result = await new Promise((resolve, reject) => {
+        db.query(insertSql, [normalized, senderRole, message], (err, res) => {
+          if (err) return reject(err);
+          resolve(res);
+        });
+      });
+
+      const messageData = {
+        id: result.insertId,
+        order_id: normalized,
+        sender_role: senderRole,
+        message,
+        created_at: new Date().toISOString()
+      };
+
+      io.to(`order_${normalized}`).emit(`chat:${normalized}`, messageData);
+    } catch (err) {
+      console.error('Error handling socket chat_message:', err.message);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
 });
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -1239,11 +1322,11 @@ const emitOrderTrackingUpdate = async (orderId, overrides = {}) => {
 
     const row = rows?.[0];
     if (!row) {
-      io.emit('order:tracking', { orderId: normalizedOrderId, ...overrides });
+      io.to(`order_${normalizedOrderId}`).emit('order:tracking', { orderId: normalizedOrderId, ...overrides });
       return;
     }
 
-    io.emit('order:tracking', {
+    io.to(`order_${normalizedOrderId}`).emit('order:tracking', {
       orderId: Number(row.order_id),
       userId: row.user_id,
       status: row.status,
@@ -1256,7 +1339,7 @@ const emitOrderTrackingUpdate = async (orderId, overrides = {}) => {
     });
   } catch (error) {
     console.error('Error emitting order tracking update:', error.message);
-    io.emit('order:tracking', { orderId: normalizedOrderId, ...overrides });
+    io.to(`order_${normalizedOrderId}`).emit('order:tracking', { orderId: normalizedOrderId, ...overrides });
   }
 };
 
@@ -2251,6 +2334,25 @@ app.get('/api/account/profile/:userId', (req, res) => {
   });
 });
 
+// New: fetch profile by email (used when JWT contains email but not numeric userId)
+app.get('/api/account/profileByEmail/:email', (req, res) => {
+  const { email } = req.params;
+  const query = 'SELECT id, name, email, phone_number FROM login WHERE email = ? LIMIT 1';
+
+  db.query(query, [email], (err, results) => {
+    if (err) {
+      console.error('Error fetching account profile by email:', err);
+      return res.status(500).json({ error: 'Failed to fetch profile.' });
+    }
+
+    if (!results.length) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    return res.json(results[0]);
+  });
+});
+
 app.put('/api/account/profile/:userId', (req, res) => {
   const { userId } = req.params;
   const { name, email, phone_number } = req.body;
@@ -3222,8 +3324,8 @@ app.post('/api/chats', (req, res) => {
       created_at: new Date().toISOString()
     };
 
-    // Broadcast to all connected clients listening for this order's messages
-    io.emit(`chat:${orderId}`, messageData);
+    // Emit message to the order-specific room so only participants receive it
+    io.to(`order_${orderId}`).emit(`chat:${orderId}`, messageData);
 
     res.json({ id: result.insertId, message: 'Message sent.' });
   });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import FarmerSidebar from '../../Components/Sidebar/FarmerSidebar'; // Import Sidebar component
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -24,9 +25,18 @@ const FarmerOrder = () => {
   const [showTracker, setShowTracker] = useState(false);
   const [trackingData, setTrackingData] = useState(null);
   const API_BASE_URL = 'https://d2pskbh3g9o3pk.cloudfront.net';
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     fetchOrders(); // Fetch orders when the component mounts
+    // create socket for real-time chat/tracking
+    const token = localStorage.getItem('token');
+    const s = io(API_BASE_URL, { auth: { token } });
+    setSocket(s);
+
+    return () => {
+      s.disconnect();
+    };
   }, []); // Empty dependency array to run once on mount
 
   const fetchOrders = () => {
@@ -137,9 +147,25 @@ const FarmerOrder = () => {
     let interval;
     if (showChat && activeOrder) {
       fetchMessages(activeOrder.orderId);
+
+      // Join room for this order to receive socket updates
+      if (socket) {
+        socket.emit('joinOrder', { orderId: activeOrder.orderId });
+        socket.off(`chat:${activeOrder.orderId}`);
+        socket.on(`chat:${activeOrder.orderId}`, (msg) => {
+          setChatMessages((prev) => [...(prev || []), msg]);
+        });
+      }
+
       interval = setInterval(() => fetchMessages(activeOrder.orderId), 3000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (socket && activeOrder) {
+        socket.off(`chat:${activeOrder.orderId}`);
+        socket.emit('leaveOrder', { orderId: activeOrder.orderId });
+      }
+      clearInterval(interval);
+    };
   }, [showChat, activeOrder]);
 
   useEffect(() => {
