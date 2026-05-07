@@ -39,6 +39,7 @@ function Cart({ userId }) {
   const [paymentNotice, setPaymentNotice] = useState('');
   const [lastOrderPayment, setLastOrderPayment] = useState(null);
   const [customerEmail, setCustomerEmail] = useState('');
+  const [resolvedUserId, setResolvedUserId] = useState(null);
   const { t, language } = useLanguage();
 
   const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); 
@@ -127,6 +128,30 @@ function Cart({ userId }) {
     } catch (err) {
       console.error('Unable to read customer email from token:', err);
     }
+  }, []);
+
+  useEffect(() => {
+    const resolveNumericUserId = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const decoded = jwtDecode(token);
+        if (!decoded?.email) return;
+
+        const response = await fetch(`https://d2pskbh3g9o3pk.cloudfront.net/api/account/profileByEmail/${encodeURIComponent(decoded.email)}`);
+        if (!response.ok) return;
+
+        const profile = await response.json();
+        if (profile?.id != null) {
+          setResolvedUserId(Number(profile.id));
+        }
+      } catch (err) {
+        console.error('Unable to resolve numeric user id for checkout:', err);
+      }
+    };
+
+    resolveNumericUserId();
   }, []);
 
   const handleRemoveFromCart = (productId) => {
@@ -263,19 +288,10 @@ function Cart({ userId }) {
       totalPrice: grandTotal,
       grandTotal,
       paymentMethod,
-      customerEmail: customerEmail || userId || '',
+      customerEmail: customerEmail || '',
       codAdvanceAmount,
       codRemainingAmount,
-      userId: (() => {
-        try {
-          const token = localStorage.getItem('token');
-          if (!token) return null;
-          const decoded = jwtDecode(token);
-          return decoded?.isFarmer || decoded?.isAdmin ? null : decoded?.email || null;
-        } catch (err) {
-          return null;
-        }
-      })()
+      userId: resolvedUserId
     };
   };
 
@@ -360,7 +376,7 @@ function Cart({ userId }) {
           console.error('Error finalizing Stripe payment:', err);
           setError(err.message || 'Error placing order after payment. Please contact support.');
         } finally {
-          navigate('/addCart', { replace: true });
+          navigate('/account', { replace: true });
         }
       };
 
