@@ -1937,18 +1937,44 @@ app.get('/api/messages/:user', (req, res) => {
           const orderId = result.insertId;
 
           // Fetch productId for each cart item from farmer_product table
-          const fetchProductIds = cartItems.map(item => {
+          const fetchProductIds = cartItems.map((item) => {
+            const resolvedProductName = item.productName || item.product_name || item.name || '';
+            const resolvedCategory = item.category || '';
+
             return new Promise((resolve, reject) => {
-                const productQuery = 'SELECT id, farmer_email FROM farmer_product WHERE name = ? AND category = ?';
-              db.query(productQuery, [item.productName, item.category], (err, results) => {
-                if (err) {
-                  reject(err);
-                } else if (results.length > 0) {
-                    resolve({ ...item, productId: results[0].id, farmerEmail: results[0].farmer_email || null });
-                } else {
-                  reject(new Error('Product not found in farmer_product table'));
+              db.query(
+                'SELECT id, farmer_email FROM farmer_product WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND LOWER(TRIM(category)) = LOWER(TRIM(?)) LIMIT 1',
+                [resolvedProductName, resolvedCategory],
+                (exactErr, exactRows) => {
+                  if (exactErr) {
+                    reject(exactErr);
+                    return;
+                  }
+
+                  if (exactRows.length > 0) {
+                    resolve({ ...item, productName: resolvedProductName, category: resolvedCategory, productId: exactRows[0].id, farmerEmail: exactRows[0].farmer_email || null });
+                    return;
+                  }
+
+                  db.query(
+                    'SELECT id, farmer_email FROM farmer_product WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+                    [resolvedProductName],
+                    (nameErr, nameRows) => {
+                      if (nameErr) {
+                        reject(nameErr);
+                        return;
+                      }
+
+                      if (nameRows.length > 0) {
+                        resolve({ ...item, productName: resolvedProductName, category: resolvedCategory, productId: nameRows[0].id, farmerEmail: nameRows[0].farmer_email || null });
+                        return;
+                      }
+
+                      reject(new Error(`Product not found in farmer_product table: ${resolvedProductName} (${resolvedCategory || 'no category'})`));
+                    }
+                  );
                 }
-              });
+              );
             });
           });
 
@@ -2022,27 +2048,19 @@ app.get('/api/messages/:user', (req, res) => {
   
 
     // Route to handle placing orders with validation
-app.post('/api11/products/cart/match', (req, res) => {
-    const { buyerName } = req.body;
-  
-    // Check if the provided name matches any entry in the login_activity table
-    const sql = 'SELECT * FROM login_activity WHERE name = ?';
-    db.query(sql, [buyerName], (err, result) => {
-      if (err) {
-        console.error('Error querying database:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-  
-      if (result.length > 0) {
-        // Match found, proceed to place the order
-        // Your existing logic to place the order goes here
+    app.post('/api11/products/cart/match', (req, res) => {
+        const { buyerName, cartItems, totalPrice } = req.body || {};
+
+        if (!buyerName || !Array.isArray(cartItems) || cartItems.length === 0) {
+          return res.status(400).json({ error: 'Checkout details are incomplete.' });
+        }
+
+        if (!Number.isFinite(Number(totalPrice))) {
+          return res.status(400).json({ error: 'Checkout total is invalid.' });
+        }
+
         return res.status(200).json({ message: 'Order placed successfully' });
-      } else {
-        // No match found, return an error
-        return res.status(400).json({ error: 'Invalid name. Please check your details and try again.' });
-      }
-    });
-  });
+      });
 
 app.post('/api11/payments/stripe/checkout-session', async (req, res) => {
   try {

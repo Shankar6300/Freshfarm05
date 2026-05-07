@@ -190,67 +190,59 @@ function Cart({ userId }) {
     setShowCheckoutDialog(false);
   };
 
-  const placeOrderAfterValidation = useCallback((finalOrderDetails) => {
+  const placeOrderAfterValidation = useCallback(async (finalOrderDetails) => {
     const orderDetails = {
       buyerName: finalOrderDetails.buyerName,
       buyerLocation: finalOrderDetails.buyerLocation,
       cartItems: finalOrderDetails.cartItems,
-      totalPrice: finalOrderDetails.totalPrice
+      totalPrice: finalOrderDetails.totalPrice,
+      customerEmail: finalOrderDetails.customerEmail,
+      userId: finalOrderDetails.userId
     };
 
-    return fetch('https://d2pskbh3g9o3pk.cloudfront.net/api11/products/cart/match', {
+    const validationResponse = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/api11/products/cart/match', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(orderDetails),
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to validate user');
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.message === 'Order placed successfully') {
-          fetch('https://d2pskbh3g9o3pk.cloudfront.net/api11/products/cart/placeOrder', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(finalOrderDetails),
-          })
-            .then(response => {
-              if (!response.ok) {
-                throw new Error('Failed to place order');
-              }
-              return response.json();
-            })
-            .then(data => {
-              console.log('Order placed successfully:', data);
-              setCartItems([]);
-              setShowCheckoutDialog(false);
-              setLastOrderPayment({
-                paymentMethod: finalOrderDetails.paymentMethod || 'online',
-                grandTotal: Number(finalOrderDetails.grandTotal || finalOrderDetails.totalPrice || 0),
-                codAdvanceAmount: Number(finalOrderDetails.codAdvanceAmount || 0),
-                codRemainingAmount: Number(finalOrderDetails.codRemainingAmount || 0)
-              });
-              setOrderPlaced(true); // Show success message
-              localStorage.removeItem('freshfarm_pending_order');
-            })
-            .catch(error => {
-              console.error('Error placing order:', error);
-              setError('Error placing order after payment. Please contact support.');
-            });
-        } else {
-          alert('Invalid name. Please check your details and try again.');
-        }
-      })
-      .catch(error => {
-        console.error('Error validating user:', error);
-        alert('Error validating user. Please try again.');
-      });
+    });
+
+    const validationData = await validationResponse.json().catch(() => ({}));
+
+    if (!validationResponse.ok) {
+      throw new Error(validationData.error || 'Failed to validate user');
+    }
+
+    if (validationData.message !== 'Order placed successfully') {
+      throw new Error('Invalid name. Please check your details and try again.');
+    }
+
+    const placeOrderResponse = await fetch('https://d2pskbh3g9o3pk.cloudfront.net/api11/products/cart/placeOrder', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(finalOrderDetails),
+    });
+
+    const placeOrderData = await placeOrderResponse.json().catch(() => ({}));
+
+    if (!placeOrderResponse.ok) {
+      throw new Error(placeOrderData.error || 'Failed to place order');
+    }
+
+    console.log('Order placed successfully:', placeOrderData);
+    setCartItems([]);
+    setShowCheckoutDialog(false);
+    setLastOrderPayment({
+      paymentMethod: finalOrderDetails.paymentMethod || 'online',
+      grandTotal: Number(finalOrderDetails.grandTotal || finalOrderDetails.totalPrice || 0),
+      codAdvanceAmount: Number(finalOrderDetails.codAdvanceAmount || 0),
+      codRemainingAmount: Number(finalOrderDetails.codRemainingAmount || 0)
+    });
+    setOrderPlaced(true);
+    localStorage.removeItem('freshfarm_pending_order');
   }, []);
 
   const buildFinalOrderDetails = () => {
@@ -360,14 +352,19 @@ function Cart({ userId }) {
         return;
       }
 
-      try {
-        const pendingOrder = JSON.parse(pendingRaw);
-        placeOrderAfterValidation(pendingOrder);
-      } catch (err) {
-        setError('Payment succeeded, but order data is missing. Please contact support.');
-      } finally {
-        navigate('/addCart', { replace: true });
-      }
+      const finalizePayment = async () => {
+        try {
+          const pendingOrder = JSON.parse(pendingRaw);
+          await placeOrderAfterValidation(pendingOrder);
+        } catch (err) {
+          console.error('Error finalizing Stripe payment:', err);
+          setError(err.message || 'Error placing order after payment. Please contact support.');
+        } finally {
+          navigate('/addCart', { replace: true });
+        }
+      };
+
+      finalizePayment();
     }
   }, [location.search, navigate, placeOrderAfterValidation]);
 
